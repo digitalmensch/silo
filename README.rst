@@ -31,6 +31,10 @@ Examples
         raise Exception()
    
     login('duckie', 'secret')
+    
+    # With DEBUG unset
+    import dis
+    dis.dis(debug)
 
 Which will result in something looking like this:
 
@@ -40,4 +44,6 @@ Which will result in something looking like this:
     {'timestamp': '2018-01-06T09:27:28.193821', 'level': 'INFO', 'place': '__main__.hello', 'line': 2, 'message': 'Hello, World!'}
     2018-01-06 09:31 AUDIT __main__.login Invocation of login('duckie', '******') failed with Exception()
     {'timestamp': '2018-01-06T09:31:13.836271', 'level': 'INFO', 'place': '__main__.hello', 'line': 2, 'username': 'duckie', 'password': '******', 'exception': {}}
+      2           0 LOAD_CONST               0 (None)
+                  2 RETURN_VALUE
 
