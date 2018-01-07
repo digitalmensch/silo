@@ -1,8 +1,7 @@
 Simply Logging
 ==============
 
-Sometimes you just don't want to configure logging.
-
+Sometimes you just don't want to configure logging. Documentation_
 
 Features
 --------
@@ -41,3 +40,5 @@ Examples
     login('duckie', 'secret')
 
 This library is MIT licensed.
+
+.. _Documentation: https://digitalmensch.github.io/silo/

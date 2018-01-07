@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html;charset=utf-8">
+  <title>silo.py</title>
+  <link rel="stylesheet" href="pycco.css">
+</head>
+<body>
+<div id='container'>
+  <div id="background"></div>
+  <div class='section'>
+    <div class='docs'><h1>silo.py</h1></div>
+  </div>
+  <div class='clearall'>
+  <div class='section' id='section-0'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-0'>#</a>
+      </div>
+      
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">datetime</span>
+<span class="kn">import</span> <span class="nn">inspect</span>
+<span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">syslog</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">functools</span>
+<span class="kn">import</span> <span class="nn">uuid</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-1'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-1'>#</a>
+      </div>
+      <h6></h6>
+<p>Processors</p>
+<h6></h6>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre><span class="n">__syslog_codes</span> <span class="o">=</span> <span class="p">{</span>
+      <span class="mi">0</span><span class="p">:</span> <span class="s1">&#39;LOG_KERN&#39;</span><span class="p">,</span>     <span class="mi">1</span><span class="p">:</span> <span class="s1">&#39;LOG_PID&#39;</span><span class="p">,</span>        <span class="mi">2</span><span class="p">:</span> <span class="s1">&#39;LOG_CRIT&#39;</span><span class="p">,</span>     <span class="mi">3</span><span class="p">:</span> <span class="s1">&#39;LOG_ERR&#39;</span><span class="p">,</span>
+      <span class="mi">4</span><span class="p">:</span> <span class="s1">&#39;LOG_WARNING&#39;</span><span class="p">,</span>  <span class="mi">5</span><span class="p">:</span> <span class="s1">&#39;LOG_NOTICE&#39;</span><span class="p">,</span>     <span class="mi">6</span><span class="p">:</span> <span class="s1">&#39;LOG_INFO&#39;</span><span class="p">,</span>     <span class="mi">7</span><span class="p">:</span> <span class="s1">&#39;LOG_DEBUG&#39;</span><span class="p">,</span>
+      <span class="mi">8</span><span class="p">:</span> <span class="s1">&#39;LOG_USER&#39;</span><span class="p">,</span>    <span class="mi">16</span><span class="p">:</span> <span class="s1">&#39;LOG_NOWAIT&#39;</span><span class="p">,</span>    <span class="mi">24</span><span class="p">:</span> <span class="s1">&#39;LOG_DAEMON&#39;</span><span class="p">,</span>  <span class="mi">32</span><span class="p">:</span> <span class="s1">&#39;LOG_PERROR&#39;</span><span class="p">,</span>
+     <span class="mi">40</span><span class="p">:</span> <span class="s1">&#39;LOG_SYSLOG&#39;</span><span class="p">,</span>  <span class="mi">48</span><span class="p">:</span> <span class="s1">&#39;LOG_LPR&#39;</span><span class="p">,</span>       <span class="mi">56</span><span class="p">:</span> <span class="s1">&#39;LOG_NEWS&#39;</span><span class="p">,</span>    <span class="mi">64</span><span class="p">:</span> <span class="s1">&#39;LOG_UUCP&#39;</span><span class="p">,</span>
+     <span class="mi">72</span><span class="p">:</span> <span class="s1">&#39;LOG_CRON&#39;</span><span class="p">,</span>    <span class="mi">80</span><span class="p">:</span> <span class="s1">&#39;LOG_AUTHPRIV&#39;</span><span class="p">,</span> <span class="mi">128</span><span class="p">:</span> <span class="s1">&#39;LOG_LOCAL0&#39;</span><span class="p">,</span> <span class="mi">136</span><span class="p">:</span> <span class="s1">&#39;LOG_LOCAL1&#39;</span><span class="p">,</span>
+    <span class="mi">144</span><span class="p">:</span> <span class="s1">&#39;LOG_LOCAL2&#39;</span><span class="p">,</span> <span class="mi">152</span><span class="p">:</span> <span class="s1">&#39;LOG_LOCAL3&#39;</span><span class="p">,</span>   <span class="mi">160</span><span class="p">:</span> <span class="s1">&#39;LOG_LOCAL4&#39;</span><span class="p">,</span> <span class="mi">168</span><span class="p">:</span> <span class="s1">&#39;LOG_LOCAL5&#39;</span><span class="p">,</span>
+    <span class="mi">176</span><span class="p">:</span> <span class="s1">&#39;LOG_LOCAL6&#39;</span><span class="p">,</span> <span class="mi">184</span><span class="p">:</span> <span class="s1">&#39;LOG_LOCAL7&#39;</span>
+<span class="p">}</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-2'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-2'>#</a>
+      </div>
+      
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre><span class="k">def</span> <span class="nf">__silo_simple_format</span><span class="p">(</span><span class="n">msg</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39; Turns structured log messages into a simple text format</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="nb">dict</span><span class="p">),</span> <span class="s1">&#39;simple_format requires &lt;dict&gt; messages&#39;</span>
+    <span class="n">ts</span> <span class="o">=</span> <span class="n">msg</span><span class="p">[</span><span class="s1">&#39;timestamp&#39;</span><span class="p">][</span><span class="s1">&#39;iso&#39;</span><span class="p">][:</span><span class="mi">19</span><span class="p">]</span>
+    <span class="n">level</span> <span class="o">=</span> <span class="n">__syslog_codes</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">msg</span><span class="p">[</span><span class="s1">&#39;level&#39;</span><span class="p">],</span> <span class="s1">&#39;&#39;</span><span class="p">)[</span><span class="mi">4</span><span class="p">:]</span> <span class="ow">or</span> <span class="n">msg</span><span class="p">[</span><span class="s1">&#39;level&#39;</span><span class="p">]</span>
+    <span class="k">if</span> <span class="s1">&#39;audit&#39;</span> <span class="ow">in</span> <span class="n">msg</span><span class="p">:</span>
+        <span class="n">func</span> <span class="o">=</span> <span class="n">msg</span><span class="p">[</span><span class="s1">&#39;audit&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;function&#39;</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
+        <span class="n">callid</span> <span class="o">=</span> <span class="n">msg</span><span class="p">[</span><span class="s1">&#39;audit&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;callid&#39;</span><span class="p">,</span> <span class="bp">None</span><span class="p">)</span>
+        <span class="n">level</span> <span class="o">=</span> <span class="n">f</span><span class="s1">&#39;AUDIT {func} {callid}&#39;</span>
+    <span class="n">fn</span><span class="p">,</span> <span class="n">line</span> <span class="o">=</span> <span class="n">msg</span><span class="p">[</span><span class="s1">&#39;context&#39;</span><span class="p">][</span><span class="s1">&#39;filename&#39;</span><span class="p">],</span> <span class="n">msg</span><span class="p">[</span><span class="s1">&#39;context&#39;</span><span class="p">][</span><span class="s1">&#39;line&#39;</span><span class="p">]</span>
+    <span class="n">fn</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">fn</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">fn</span><span class="p">)</span> <span class="k">else</span> <span class="n">fn</span>
+    <span class="n">args</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">msg</span><span class="p">[</span><span class="s1">&#39;args&#39;</span><span class="p">]))</span>
+    <span class="n">args</span> <span class="o">+=</span> <span class="p">[</span><span class="n">f</span><span class="s1">&#39;{k}={v}&#39;</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">msg</span><span class="p">[</span><span class="s1">&#39;kwargs&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">()]</span>
+    <span class="k">return</span> <span class="n">f</span><span class="s1">&#39;{ts} {level} ({fn}:{line}) &#39;</span> <span class="o">+</span> <span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">args</span><span class="p">)</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-3'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-3'>#</a>
+      </div>
+      
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre><span class="k">def</span> <span class="nf">__silo_json_format</span><span class="p">(</span><span class="n">msg</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39; Converts log messages to JSON</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="nb">dict</span><span class="p">),</span> <span class="s1">&#39;json_format requires &lt;dict&gt; messages&#39;</span>
+    <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-4'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-4'>#</a>
+      </div>
+      <h6></h6>
+<p>Destinations</p>
+<h6></h6>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-5'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-5'>#</a>
+      </div>
+      
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre><span class="k">def</span> <span class="nf">__silo_stderr</span><span class="p">(</span><span class="n">msg</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39; Sends formated messages, i.e. strings, to stderr</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="nb">str</span><span class="p">),</span> <span class="s1">&#39;stderr requires log messages as text&#39;</span>
+    <span class="k">print</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="nb">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-6'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-6'>#</a>
+      </div>
+      
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre><span class="k">def</span> <span class="nf">__silo_syslog</span><span class="p">(</span><span class="n">msg</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39; Formats and logs messages in one step to syslog</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">args</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">msg</span><span class="p">[</span><span class="s1">&#39;args&#39;</span><span class="p">]))</span>
+    <span class="n">args</span> <span class="o">+=</span> <span class="p">[</span><span class="n">f</span><span class="s1">&#39;{k}={v}&#39;</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">msg</span><span class="p">[</span><span class="s1">&#39;kwargs&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">()]</span>
+    <span class="n">filename</span><span class="p">,</span> <span class="n">line</span> <span class="o">=</span> <span class="n">msg</span><span class="p">[</span><span class="s1">&#39;context&#39;</span><span class="p">][</span><span class="s1">&#39;filename&#39;</span><span class="p">],</span> <span class="n">msg</span><span class="p">[</span><span class="s1">&#39;context&#39;</span><span class="p">][</span><span class="s1">&#39;line&#39;</span><span class="p">]</span>
+    <span class="n">filename</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">filename</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span> <span class="k">else</span> <span class="n">filename</span>
+    <span class="n">syslog</span><span class="o">.</span><span class="n">syslog</span><span class="p">(</span><span class="n">msg</span><span class="p">[</span><span class="s1">&#39;level&#39;</span><span class="p">],</span> <span class="n">f</span><span class="s1">&#39;({filename}:{line}) &#39;</span> <span class="o">+</span> <span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">args</span><span class="p">))</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-7'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-7'>#</a>
+      </div>
+      <h6></h6>
+<p>Internals</p>
+<h6></h6>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-8'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-8'>#</a>
+      </div>
+      
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre><span class="k">def</span> <span class="nf">__setup</span><span class="p">():</span>
+    <span class="n">chains</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">[</span>
+            <span class="nb">globals</span><span class="p">()</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">step</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">step</span> <span class="ow">in</span> <span class="nb">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">s</span><span class="p">:</span> <span class="n">f</span><span class="s1">&#39;__silo_{s}&#39;</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">chain</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;:&#39;</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">step</span> <span class="ow">in</span> <span class="nb">globals</span><span class="p">()</span>
+        <span class="p">]</span>
+        <span class="k">for</span> <span class="n">chain</span> <span class="ow">in</span> <span class="p">[</span><span class="n">name</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span> <span class="k">if</span> <span class="n">name</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;SILO_&#39;</span><span class="p">)]</span>
+    <span class="p">]</span> <span class="ow">or</span> <span class="p">[</span> <span class="p">[</span><span class="n">__silo_simple_format</span><span class="p">,</span> <span class="n">__silo_stderr</span><span class="p">]</span> <span class="p">]</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-9'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-9'>#</a>
+      </div>
+      
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>    <span class="k">def</span> <span class="nf">output</span><span class="p">(</span><span class="n">msg</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">chain</span> <span class="ow">in</span> <span class="n">chains</span><span class="p">:</span>
+            <span class="n">cpy</span> <span class="o">=</span> <span class="n">msg</span>
+            <span class="k">for</span> <span class="n">step</span> <span class="ow">in</span> <span class="n">chain</span><span class="p">:</span>
+                <span class="n">new</span> <span class="o">=</span> <span class="n">step</span><span class="p">(</span><span class="n">cpy</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">new</span><span class="p">:</span>
+                    <span class="n">cpy</span> <span class="o">=</span> <span class="n">new</span>
+
+    <span class="k">return</span> <span class="n">output</span>
+
+
+<span class="n">__output</span> <span class="o">=</span> <span class="n">__setup</span><span class="p">()</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-10'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-10'>#</a>
+      </div>
+      
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre><span class="k">def</span> <span class="nf">__log</span><span class="p">(</span><span class="n">level</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="n">frame</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">stack</span><span class="p">()[</span><span class="mi">2</span><span class="p">]</span>
+    <span class="n">__output</span><span class="p">({</span>
+        <span class="s1">&#39;level&#39;</span><span class="p">:</span> <span class="n">level</span><span class="p">,</span>
+        <span class="s1">&#39;timestamp&#39;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s1">&#39;iso&#39;</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">utcnow</span><span class="p">()</span><span class="o">.</span><span class="n">isoformat</span><span class="p">()</span><span class="o">+</span><span class="s1">&#39;+00:00&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;unix&#39;</span><span class="p">:</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="p">},</span>
+        <span class="s1">&#39;context&#39;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s1">&#39;function&#39;</span><span class="p">:</span> <span class="n">frame</span><span class="o">.</span><span class="n">function</span><span class="p">,</span>
+            <span class="s1">&#39;filename&#39;</span><span class="p">:</span> <span class="n">frame</span><span class="o">.</span><span class="n">filename</span><span class="p">,</span>
+            <span class="s1">&#39;line&#39;</span><span class="p">:</span> <span class="n">frame</span><span class="o">.</span><span class="n">lineno</span>
+        <span class="p">},</span>
+        <span class="s1">&#39;args&#39;</span><span class="p">:</span> <span class="n">args</span><span class="p">,</span>
+        <span class="s1">&#39;kwargs&#39;</span><span class="p">:</span> <span class="n">kwargs</span><span class="p">,</span>
+    <span class="p">})</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-11'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-11'>#</a>
+      </div>
+      
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre><span class="k">def</span> <span class="nf">__audit</span><span class="p">(</span><span class="n">function</span><span class="p">,</span> <span class="n">callid</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="n">frame</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">stack</span><span class="p">()[</span><span class="mi">2</span><span class="p">]</span>
+    <span class="n">__output</span><span class="p">({</span>
+        <span class="s1">&#39;audit&#39;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s1">&#39;function&#39;</span><span class="p">:</span> <span class="n">function</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
+            <span class="s1">&#39;filename&#39;</span><span class="p">:</span> <span class="n">inspect</span><span class="o">.</span><span class="n">getfile</span><span class="p">(</span><span class="n">function</span><span class="p">),</span>
+            <span class="s1">&#39;callid&#39;</span><span class="p">:</span> <span class="n">callid</span>
+        <span class="p">},</span>
+        <span class="s1">&#39;level&#39;</span><span class="p">:</span> <span class="n">syslog</span><span class="o">.</span><span class="n">LOG_NOTICE</span><span class="p">,</span>
+        <span class="s1">&#39;timestamp&#39;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s1">&#39;iso&#39;</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">utcnow</span><span class="p">()</span><span class="o">.</span><span class="n">isoformat</span><span class="p">()</span><span class="o">+</span><span class="s1">&#39;+00:00&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;unix&#39;</span><span class="p">:</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="p">},</span>
+        <span class="s1">&#39;context&#39;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s1">&#39;function&#39;</span><span class="p">:</span> <span class="n">frame</span><span class="o">.</span><span class="n">function</span><span class="p">,</span>
+            <span class="s1">&#39;filename&#39;</span><span class="p">:</span> <span class="n">frame</span><span class="o">.</span><span class="n">filename</span><span class="p">,</span>
+            <span class="s1">&#39;line&#39;</span><span class="p">:</span> <span class="n">frame</span><span class="o">.</span><span class="n">lineno</span>
+        <span class="p">},</span>
+        <span class="s1">&#39;args&#39;</span><span class="p">:</span> <span class="n">args</span><span class="p">,</span>
+        <span class="s1">&#39;kwargs&#39;</span><span class="p">:</span> <span class="n">kwargs</span><span class="p">,</span>
+    <span class="p">})</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-12'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-12'>#</a>
+      </div>
+      <h6></h6>
+<h2>Public API</h2>
+<ul>
+<li>Audit decorator factory</li>
+<li>Low overhead debug function</li>
+<li>Log-level shims</li>
+</ul>
+<h6></h6>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-13'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-13'>#</a>
+      </div>
+      
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre><span class="k">def</span> <span class="nf">audit</span><span class="p">(</span><span class="n">func</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39; Decorator that logs function entry and exit</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">signature</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">signature</span><span class="p">(</span><span class="n">func</span><span class="p">)</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-14'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-14'>#</a>
+      </div>
+      
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>    <span class="nd">@functools.wraps</span><span class="p">(</span><span class="n">func</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">_wrapper</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">bound</span> <span class="o">=</span> <span class="n">signature</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="n">bound</span><span class="o">.</span><span class="n">apply_defaults</span><span class="p">()</span>
+        <span class="n">callid</span> <span class="o">=</span> <span class="n">uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">()</span><span class="o">.</span><span class="n">hex</span><span class="p">[:</span><span class="mi">8</span><span class="p">]</span>
+        <span class="n">__audit</span><span class="p">(</span><span class="n">func</span><span class="p">,</span> <span class="n">callid</span><span class="p">,</span> <span class="n">bound</span><span class="p">)</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="n">__audit</span><span class="p">(</span><span class="n">func</span><span class="p">,</span> <span class="n">callid</span><span class="p">,</span> <span class="n">result</span><span class="o">=</span><span class="n">res</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">res</span>
+    <span class="k">return</span> <span class="n">_wrapper</span>
+
+
+<span class="k">def</span> <span class="nf">emergency</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="n">__log</span><span class="p">(</span><span class="n">syslog</span><span class="o">.</span><span class="n">LOG_EMERG</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">alert</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="n">__log</span><span class="p">(</span><span class="n">syslog</span><span class="o">.</span><span class="n">LOG_ALERT</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">critical</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="n">__log</span><span class="p">(</span><span class="n">syslog</span><span class="o">.</span><span class="n">LOG_CRIT</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">error</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="n">__log</span><span class="p">(</span><span class="n">syslog</span><span class="o">.</span><span class="n">LOG_ERR</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">warning</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="n">__log</span><span class="p">(</span><span class="n">syslog</span><span class="o">.</span><span class="n">LOG_WARNING</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">notice</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="n">__log</span><span class="p">(</span><span class="n">syslog</span><span class="o">.</span><span class="n">LOG_NOTICE</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">info</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="n">__log</span><span class="p">(</span><span class="n">syslog</span><span class="o">.</span><span class="n">LOG_INFO</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-15'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-15'>#</a>
+      </div>
+      <p>Low overhead debug function</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre><span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;DEBUG&#39;</span><span class="p">,</span> <span class="bp">False</span><span class="p">):</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-16'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-16'>#</a>
+      </div>
+      
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>    <span class="k">def</span> <span class="nf">debug</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">__log</span><span class="p">(</span><span class="n">syslog</span><span class="o">.</span><span class="n">LOG_DEBUG</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-17'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-17'>#</a>
+      </div>
+      
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>    <span class="k">def</span> <span class="nf">debug</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">pass</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-18'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-18'>#</a>
+      </div>
+      <h6></h6>
+<p>Helper to check silo configuration</p>
+<h6></h6>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre><span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="k">print</span><span class="p">(</span><span class="s1">&#39;Debugging&#39;</span><span class="p">,</span> <span class="s1">&#39;enabled&#39;</span> <span class="k">if</span> <span class="nb">bool</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;DEBUG&#39;</span><span class="p">,</span> <span class="bp">False</span><span class="p">))</span> <span class="k">else</span> <span class="s1">&#39;disabled&#39;</span><span class="p">)</span>
+    <span class="k">print</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">chain</span> <span class="ow">in</span> <span class="nb">filter</span><span class="p">(</span><span class="k">lambda</span> <span class="n">n</span><span class="p">:</span> <span class="n">n</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;SILO_&#39;</span><span class="p">),</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">):</span>
+        <span class="k">print</span><span class="p">(</span><span class="n">chain</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">chain</span><span class="p">))</span>
+
+    <span class="n">emergency</span><span class="p">(</span><span class="s1">&#39;silo test message&#39;</span><span class="p">)</span>
+    <span class="n">alert</span><span class="p">(</span><span class="s1">&#39;silo test message&#39;</span><span class="p">)</span>
+    <span class="n">critical</span><span class="p">(</span><span class="s1">&#39;silo test message&#39;</span><span class="p">)</span>
+    <span class="n">error</span><span class="p">(</span><span class="s1">&#39;silo test message&#39;</span><span class="p">)</span>
+    <span class="n">warning</span><span class="p">(</span><span class="s1">&#39;silo test message&#39;</span><span class="p">)</span>
+    <span class="n">notice</span><span class="p">(</span><span class="s1">&#39;silo test message&#39;</span><span class="p">)</span>
+    <span class="n">info</span><span class="p">(</span><span class="s1">&#39;silo test message&#39;</span><span class="p">)</span>
+    <span class="n">debug</span><span class="p">(</span><span class="s1">&#39;silo test message&#39;</span><span class="p">)</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-19'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-19'>#</a>
+      </div>
+      
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>    <span class="nd">@audit</span>
+    <span class="k">def</span> <span class="nf">login</span><span class="p">(</span><span class="n">username</span><span class="p">,</span> <span class="n">password</span><span class="p">):</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-20'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-20'>#</a>
+      </div>
+      <p>do smart stuff here...</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>        <span class="k">return</span> <span class="bp">False</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">login</span><span class="p">(</span><span class="s1">&#39;duckie&#39;</span><span class="p">,</span> <span class="s1">&#39;secret&#39;</span><span class="p">)</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="n">info</span><span class="p">(</span><span class="s1">&#39;done&#39;</span><span class="p">)</span>
+
+</pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+</div>
+</body>
