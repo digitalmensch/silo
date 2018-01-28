@@ -3,6 +3,10 @@ Simply Logging
 
 Sometimes you just don't want to configure logging. Documentation_
 
+.. image:: https://snyk.io/test/github/digitalmensch/silo/badge.svg?targetFile=requirements.txt
+   :target: https://snyk.io/test/github/digitalmensch/silo?targetFile=requirements.txt
+   :alt: Known Vulnerabilities
+
 Features
 --------
 
