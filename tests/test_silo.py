@@ -1,12 +1,11 @@
-import pytest
 import silo
 
 def test_functions_return_none():
-    assert emergency('silo test message') == None
-    assert alert('silo test message') == None
-    assert critical('silo test message') == None
-    assert error('silo test message') == None
-    assert warning('silo test message') == None
-    assert notice('silo test message') == None
-    assert info('silo test message') == None
-    assert debug('silo test message') == None
+    assert silo.emergency('silo test message') == None
+    assert silo.alert('silo test message') == None
+    assert silo.critical('silo test message') == None
+    assert silo.error('silo test message') == None
+    assert silo.warning('silo test message') == None
+    assert silo.notice('silo test message') == None
+    assert silo.info('silo test message') == None
+    assert silo.debug('silo test message') == None
