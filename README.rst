@@ -3,9 +3,14 @@ Simply Logging
 
 Sometimes you just don't want to configure logging. Documentation_
 
-.. image:: https://snyk.io/test/github/digitalmensch/silo/badge.svg?targetFile=requirements.txt
-   :target: https://snyk.io/test/github/digitalmensch/silo?targetFile=requirements.txt
-   :alt: Known Vulnerabilities
+.. image:: https://snyk.io/test/github/digitalmensch/silo/badge.svg
+   :target: https://snyk.io/test/github/digitalmensch/silo
+
+.. image:: https://travis-ci.org/digitalmensch/silo.svg?branch=master
+   :target: https://travis-ci.org/digitalmensch/silo
+
+.. image:: https://coveralls.io/repos/github/digitalmensch/silo/badge.svg?branch=master
+   :target: https://coveralls.io/github/digitalmensch/silo?branch=master
 
 Features
 --------
